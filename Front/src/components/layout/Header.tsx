@@ -91,13 +91,13 @@ export function Header() {
             gap: 1,
           }}
         >
-          {isAuthenticated && (
+          {isAuthenticated && user && (
             <Typography
               variant="body2"
               sx={{ display: { xs: 'none', md: 'block' }, maxWidth: 160 }}
               noWrap
             >
-              Signed in as <strong>{user?.username}</strong>
+              Signed in as <strong>{user.name || user.username}</strong>
             </Typography>
           )}
           {isAuthenticated ? (

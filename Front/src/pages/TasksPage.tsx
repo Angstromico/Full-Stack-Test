@@ -1,9 +1,19 @@
-import { Box, Divider, Typography } from '@mui/material'
-import { useTasks } from '../state/TaskContext'
+import { Box, CircularProgress, Divider, Typography } from '@mui/material'
+import { useTasks } from '../hooks/useTasks'
 import { TaskList } from '../components/tasks/TaskList'
 
 export function TasksPage() {
-  const { tasks, updateTask } = useTasks()
+  const { tasks, isLoading, changeTaskStatus } = useTasks()
+
+  const handleToggleStatus = (task: { id: string; status: string }) => {
+    if (task.status === 'DONE') {
+      changeTaskStatus({ id: task.id, status: 'PENDING' })
+    } else if (task.status === 'PENDING') {
+      changeTaskStatus({ id: task.id, status: 'IN_PROGRESS' })
+    } else if (task.status === 'IN_PROGRESS') {
+      changeTaskStatus({ id: task.id, status: 'DONE' })
+    }
+  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
@@ -18,16 +28,14 @@ export function TasksPage() {
       </Box>
       <Divider />
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', pr: { sm: 1 } }}>
-        <TaskList
-          tasks={tasks}
-          onToggleDone={(task) =>
-            updateTask(task.id, {
-              status: task.status === 'done' ? 'pending' : 'done',
-            })
-          }
-        />
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <TaskList tasks={tasks} onToggleStatus={handleToggleStatus} />
+        )}
       </Box>
     </Box>
   )
 }
-

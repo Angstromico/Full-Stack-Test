@@ -1,6 +1,6 @@
 import { Stack, TextField, Button } from '@mui/material'
 import { useEffect, useState } from 'react'
-import type { Task } from '../../state/TaskContext'
+import type { Task } from '../../types/task'
 
 type Props = {
   initialTask?: Task
@@ -59,4 +59,3 @@ export function TaskForm({ initialTask, onSubmit, onCancel }: Props) {
     </form>
   )
 }
-

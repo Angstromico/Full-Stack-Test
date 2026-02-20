@@ -2,11 +2,9 @@
 
 This repository contains a full‑stack implementation of the **Technical Test – Full Stack Javascript Programmer** using:
 
-- **Front end**: React 19, Vite, TypeScript, **Material UI**, React Router
-- **Back end**: Express with TypeScript (under `Back/`)
-- **API design**: GraphQL (planned as the communication layer between front end and back end)
-
-This README focuses on describing the architecture, how to run the project, and how the current front end behaves according to the test requirements. The actual PDF is not committed in this repo, so the structure below follows common expectations for this kind of technical assessment.
+- **Front end**: React 19, Vite, TypeScript, **Material UI**, React Router, **Apollo Client**, **TanStack Query**, **Auth0**
+- **Back end**: Express with TypeScript, **GraphQL** (Apollo Server), **MongoDB**, **Auth0 JWT Bearer**
+- **API design**: GraphQL as the communication layer between front end and back end
 
 ---
 
@@ -15,14 +13,153 @@ This README focuses on describing the architecture, how to run the project, and 
 - `Front/`: React + Vite + TypeScript single‑page application
   - Uses **Material UI** for UI/UX
   - Uses **React Router** for navigation between pages
-  - Uses **localStorage** for demo authentication and per‑user tasks
-- `Back/`: Express + TypeScript back end (GraphQL API to be implemented here)
-
-Front and back are currently **decoupled**. The front end simulates behaviour only, with no real network calls yet, to let you focus on UX and state management.
+  - Uses **Apollo Client** for GraphQL communication
+  - Uses **TanStack Query** for data caching and state management
+  - Uses **Auth0** for authentication
+- `Back/`: Express + TypeScript back end with GraphQL API
+  - **MVC architecture** with controllers, models, and GraphQL resolvers
+  - **MongoDB** for data persistence
+  - **Auth0 JWT Bearer** middleware for authentication
+  - **GraphQL** API with Apollo Server
 
 ---
 
-## Front end (React + Vite + TypeScript + Material UI)
+## Back end (Express + TypeScript + GraphQL + MongoDB + Auth0)
+
+### Tech stack
+
+- **Express** with **TypeScript**
+- **Apollo Server Express** for GraphQL API
+- **MongoDB** with **Mongoose** ODM
+- **Auth0** JWT Bearer authentication using `express-oauth2-jwt-bearer`
+- **GraphQL** for API layer
+
+### Architecture overview
+
+The back end follows **MVC architecture** with clean separation of concerns:
+
+#### Folder structure
+
+```
+Back/
+├── src/
+│   ├── config/          # Configuration files (database, environment)
+│   ├── controllers/     # Business logic controllers
+│   ├── graphql/         # GraphQL schema, resolvers, and context
+│   ├── helpers/         # Helper utilities (HTTP status codes)
+│   ├── middleware/     # Express middleware (Auth0 JWT)
+│   ├── models/         # MongoDB models (User, Task)
+│   └── index.ts        # Application entry point
+```
+
+#### Key components
+
+- **`src/helpers/httpStatusCodes.ts`**
+  - Centralized HTTP status code constants (e.g., `BAD_REQUEST = 400`, `NOT_FOUND = 404`)
+  - Used throughout controllers for consistent error responses
+
+- **`src/config/database.ts`**
+  - MongoDB connection using Mongoose
+  - Exports `connectDatabase()` function
+
+- **`src/config/env.ts`**
+  - Environment variable configuration
+  - Type-safe access to `PORT`, `MONGODB`, and Auth0 credentials
+
+- **`src/models/User.ts`**
+  - User model with `name`, `email`, `username`, `auth0Id`
+  - Both `email` and `username` are unique and indexed
+  - Timestamps for `createdAt` and `updatedAt`
+
+- **`src/models/Task.ts`**
+  - Task model with `title`, `description`, `status`, `userId`
+  - Status enum: `PENDING` → `IN_PROGRESS` → `DONE` → `ARCHIVED`
+  - Indexed by `userId` and `status` for efficient queries
+
+- **`src/middleware/auth0.ts`**
+  - Auth0 JWT Bearer middleware using `express-oauth2-jwt-bearer`
+  - Validates JWT tokens and attaches payload to `req.auth`
+
+- **`src/controllers/authController.ts`**
+  - `registerUser`: Creates new user after Auth0 authentication
+  - `loginUser`: Finds user by Auth0 ID after authentication
+  - `getCurrentUser`: Returns current authenticated user
+
+- **`src/controllers/taskController.ts`**
+  - `createTask`: Creates a new task for the authenticated user
+  - `getTasks`: Retrieves all tasks for the authenticated user
+  - `updateTask`: Updates task title/description
+  - `deleteTask`: Deletes a task
+  - `changeTaskStatus`: Changes task status (PENDING → IN_PROGRESS → DONE → ARCHIVED)
+
+- **`src/graphql/schema.ts`**
+  - GraphQL type definitions for `User` and `Task`
+  - Queries: `me`, `tasks`, `task(id)`
+  - Mutations: `registerUser`, `loginUser`, `createTask`, `updateTask`, `deleteTask`, `changeTaskStatus`
+
+- **`src/graphql/resolvers.ts`**
+  - GraphQL resolvers implementing the schema
+  - All resolvers check authentication via context
+  - Tasks are filtered by `userId` to ensure user isolation
+
+- **`src/graphql/context.ts`**
+  - Creates GraphQL context from Auth0 JWT payload
+  - Extracts `auth0Id` and finds corresponding MongoDB `userId`
+  - Provides `auth0Id` and `userId` to all resolvers
+
+### GraphQL API
+
+The GraphQL endpoint is available at `/graphql` and requires authentication via Auth0 JWT Bearer token.
+
+**Example queries:**
+
+```graphql
+query GetMe {
+  me {
+    id
+    name
+    email
+    username
+  }
+}
+
+query GetTasks {
+  tasks {
+    id
+    title
+    description
+    status
+    createdAt
+    updatedAt
+  }
+}
+```
+
+**Example mutations:**
+
+```graphql
+mutation RegisterUser($name: String!, $email: String!, $username: String) {
+  registerUser(name: $name, email: $email, username: $username) {
+    id
+    name
+    email
+    username
+  }
+}
+
+mutation CreateTask($title: String!, $description: String) {
+  createTask(title: $title, description: $description) {
+    id
+    title
+    description
+    status
+  }
+}
+```
+
+---
+
+## Front end (React + Vite + TypeScript + Material UI + Apollo + TanStack Query)
 
 ### Tech stack
 
@@ -30,137 +167,131 @@ Front and back are currently **decoupled**. The front end simulates behaviour on
 - **Vite** as the build and dev server
 - **Material UI (MUI)** for component library and theming
 - **React Router** for client‑side routing
-- **LocalStorage** for:
-  - Demo user accounts
-  - Persisted login session
-  - Per‑user task lists
-
-Even though the final solution will use **GraphQL** between the front end and Express back end, the current version intentionally does **not** perform any API calls. When GraphQL is wired in, the same UI will sit on top of a GraphQL client (e.g. Apollo Client or urql) and the local state will be replaced by server‑driven data.
+- **Apollo Client** for GraphQL communication
+- **TanStack Query** for data caching and optimistic updates
+- **Auth0 React SDK** (`@auth0/auth0-react`) for authentication
 
 ### Architecture overview
 
-The front‑end app is structured around **pages**, **reusable components**, and **state providers**:
+The front‑end app is structured around **pages**, **reusable components**, **hooks**, and **API layer**:
 
-- `src/state/AuthContext.tsx`
-  - Provides authentication state (`user`, `isAuthenticated`) and actions (`login`, `register`, `logout`).
-  - Uses `localStorage` to persist:
-    - A list of demo users (including default `admin` / `123`).
-    - The current logged‑in user session.
-  - All UI that depends on authentication consumes this context.
+#### Folder structure
 
-- `src/state/TaskContext.tsx`
-  - Manages the current user’s **tasks**.
-  - Each user has their own task list stored under a per‑user `localStorage` key.
-  - Exposes CRUD operations:
-    - `addTask`
-    - `updateTask`
-    - `deleteTask`
-  - Tasks have `id`, `title`, `description`, `status`, `createdAt`, and `updatedAt`.
+```
+Front/
+├── src/
+│   ├── api/            # Apollo Client config, GraphQL queries/mutations
+│   ├── components/     # Reusable UI components
+│   ├── hooks/         # Custom hooks (useTasks, useUser)
+│   ├── pages/         # Page components
+│   ├── routes/        # Route protection components
+│   ├── state/         # Context providers (AuthContext)
+│   ├── types/         # TypeScript type definitions
+│   └── main.tsx       # Application entry point
+```
 
-- `src/components/layout/Header.tsx`
-  - Responsive **app header** built with Material UI `AppBar` / `Toolbar`.
-  - Shows:
-    - App title (links to the tasks page).
-    - Navigation buttons for **Tasks** and **Task Manager**.
-    - Auth section:
-      - When logged out: **Login** button.
-      - When logged in: current username + **Logout** button.
-  - On small screens the navigation collapses into a simple menu button while keeping the layout usable.
+#### Key components
 
-- `src/components/layout/AppLayout.tsx`
-  - High‑level layout wrapper used by React Router.
-  - Renders:
-    - The `Header`
-    - A centered `Container` with a padded `Paper` for page contents
-  - Ensures the app is responsive (mobile first) with comfortable spacing and consistent background.
+- **`src/api/apolloClient.ts`**
+  - Apollo Client configuration
+  - Auth link that adds Auth0 JWT token to requests
+  - Token expiration checking and automatic cleanup
 
-- `src/components/tasks/TaskForm.tsx`
-  - Reusable form used to **create** or **edit** tasks.
-  - Inputs:
-    - Title (required)
-    - Description (optional, multiline)
-  - Used in the Task Manager page both for new tasks and editing an existing one.
+- **`src/api/queries.ts`**
+  - GraphQL queries: `GET_ME`, `GET_TASKS`, `GET_TASK`
 
-- `src/components/tasks/TaskList.tsx`
-  - Generic, reusable list component to **display tasks**.
-  - Shows:
-    - Title, description, status chip, last updated timestamp.
-    - Optional actions:
-      - Toggle completion
-      - Edit
-      - Delete
-  - Layout is responsive and scrollable inside the page content card.
+- **`src/api/mutations.ts`**
+  - GraphQL mutations: `REGISTER_USER`, `LOGIN_USER`, `CREATE_TASK`, `UPDATE_TASK`, `DELETE_TASK`, `CHANGE_TASK_STATUS`
 
-- `src/routes/ProtectedRoute.tsx`
-  - Wrapper around `Route` elements that:
-    - Redirects unauthenticated users to the login page.
-    - Preserves the original path so users return to it after login.
+- **`src/state/AuthContext.tsx`**
+  - Auth context using Auth0 React SDK
+  - Manages Auth0 token storage and expiration checking
+  - Integrates with GraphQL mutations for user registration/login
+  - Fetches user data via GraphQL `GET_ME` query
 
-### Pages and navigation (React Router)
+- **`src/hooks/useTasks.ts`**
+  - Custom hook using TanStack Query + Apollo Client
+  - Provides `tasks`, `isLoading`, `createTask`, `updateTask`, `deleteTask`, `changeTaskStatus`
+  - Automatic cache invalidation on mutations
 
-Routing is defined in `src/App.tsx` using React Router:
+- **`src/hooks/useUser.ts`**
+  - Custom hook for fetching current user data
+  - Uses TanStack Query with Apollo Client
+
+- **`src/components/layout/Header.tsx`**
+  - Responsive app header with navigation
+  - Shows current user name and logout button
+
+- **`src/components/tasks/TaskForm.tsx`**
+  - Form for creating/editing tasks
+  - Title (required) and description (optional)
+
+- **`src/components/tasks/TaskList.tsx`**
+  - Displays list of tasks with status chips
+  - Supports edit, delete, and status toggle actions
+  - Status values: PENDING, IN_PROGRESS, DONE, ARCHIVED
+
+- **`src/routes/ProtectedRoute.tsx`**
+  - Route wrapper that redirects unauthenticated users to login
+  - Preserves original path for post-login redirect
+
+### Pages and navigation
 
 - `/login` – **Login / Register page**
-  - Tabbed card with two modes:
-    - **Login**: authenticate using:
-      - Demo user: `admin` / `123`
-      - Any registered account.
-    - **Register**: create a new local user, then log in automatically.
-  - Error messages are shown inline using MUI `Alert`.
-  - On successful login, user is redirected to:
-    - The page they originally tried to access, or
-    - `/tasks` by default.
+  - **Login**: Redirects to Auth0 for authentication
+  - **Register**: After Auth0 authentication, creates user account with name, email, and optional username
+  - Both email and username must be unique in the database
 
 - `/tasks` – **Tasks page**
-  - **Protected route** (requires login).
-  - Read‑oriented view of the current user’s tasks using `TaskList`.
-  - Quickly mark tasks as done/undone via the status icon.
+  - Protected route (requires Auth0 authentication)
+  - Read-oriented view of user's tasks
+  - Status progression: PENDING → IN_PROGRESS → DONE
 
 - `/task-manager` – **Task Manager page**
-  - **Protected route** (requires login).
-  - Split layout:
-    - Left: `TaskForm` for creating new tasks or editing the selected one.
-    - Right: `TaskList` with full CRUD:
-      - Select a task to edit it (pre‑fills the form).
-      - Delete a task.
-      - Toggle completion status.
-  - All changes are per‑user and persisted into `localStorage`.
+  - Protected route (requires Auth0 authentication)
+  - Split layout: form on left, task list on right
+  - Full CRUD operations: create, edit, delete, change status
+  - Status progression: PENDING → IN_PROGRESS → DONE → ARCHIVED
 
 - `/logout` – **Logout page**
-  - Simple confirmation/feedback screen after a logout.
-  - Offers a button back to the login page.
-  - Automatically redirects to `/login` after a short delay.
+  - Confirmation screen after logout
+  - Redirects to login after short delay
 
-- `/` and unknown paths
-  - Redirect to `/tasks`.
+### Authentication flow
 
-### Responsive design notes
-
-- Layout is mobile‑first:
-  - Header uses Material UI responsive breakpoints (`sm`, `md`) to adapt navigation.
-  - Main content is wrapped in a `Container` with max width and vertical padding.
-  - Task Manager page switches between stacked layout (mobile) and two‑column layout (desktop).
-- MUI’s `CssBaseline` and a custom light theme ensure consistent typography, spacing, and colors.
+1. User clicks "Login" → Redirected to Auth0
+2. User authenticates with Auth0 (email/password or social login)
+3. Auth0 redirects back with authorization code
+4. Front end exchanges code for access token
+5. Token stored in localStorage with expiration time
+6. Front end calls `loginUser` GraphQL mutation
+7. Back end finds user by Auth0 ID or creates new user via `registerUser`
+8. User data fetched via `GET_ME` query and stored in context
+9. Token expiration checked periodically; user logged out if expired
 
 ---
 
-## Back end (Express + TypeScript + GraphQL – planned)
+## Environment variables
 
-- The back end (under `Back/`) is implemented with **Express** and **TypeScript**.
-- The target architecture is:
-  - A **GraphQL** API providing task and authentication operations.
-  - The React front end will eventually replace localStorage calls with GraphQL queries/mutations.
-- At this stage of the test:
-  - **No network calls** are made from the front end.
-  - All data is local and purely for demo/UX purposes.
+### Back end (`Back/.env`)
 
-When extending this project, the expected next steps are:
+```env
+PORT=8080
+MONGODB=mongodb+srv://...
+AUTH0_CLIENT_ID=...
+AUTH0_CLIENT_SECRET=...
+AUTH0_DOMAIN=dev-....us.auth0.com
+AUTH0_AUDIENCE=task-manager-crud-api
+```
 
-- Define a GraphQL schema for:
-  - `User` and `Task` types.
-  - Mutations for register/login and CRUD on tasks.
-- Expose a GraphQL endpoint in the Express app.
-- Introduce a GraphQL client in the front end and gradually migrate state operations.
+### Front end (`Front/.env`)
+
+```env
+VITE_GRAPHQL_ENDPOINT=http://localhost:8080/graphql
+VITE_AUTH0_DOMAIN=dev-....us.auth0.com
+VITE_AUTH0_CLIENT_ID=...
+VITE_AUTH0_AUDIENCE=task-manager-crud-api
+```
 
 ---
 
@@ -170,6 +301,8 @@ When extending this project, the expected next steps are:
 
 - Node.js 20+
 - npm (or another Node package manager)
+- MongoDB database (local or Atlas)
+- Auth0 account and application configured
 
 ### Install dependencies
 
@@ -183,7 +316,16 @@ cd ../Front
 npm install
 ```
 
-### Run the front end (Vite)
+### Run the back end
+
+```bash
+cd Back
+npm run dev
+```
+
+The GraphQL endpoint will be available at `http://localhost:8080/graphql`
+
+### Run the front end
 
 ```bash
 cd Front
@@ -192,43 +334,50 @@ npm run dev
 
 Then open the URL that Vite prints in the terminal (typically `http://localhost:5173`).
 
-### Run the back end (Express)
+---
 
-The exact command depends on how the `Back` project is configured (for example, `npm run dev` or `npm start`). A typical flow might look like:
+## How to test
 
-```bash
-cd Back
-npm run dev
-```
-
-At this stage, the front end does **not** call the back end yet, so running the API is optional for UI review.
+1. **Start both servers** (backend and frontend)
+2. **Open the front end** in your browser
+3. **Click Login** → You'll be redirected to Auth0
+4. **Authenticate with Auth0** (create account if needed)
+5. **After authentication**, you'll be redirected back
+6. **If it's your first time**, register your account:
+   - Fill in name, email, and optional username
+   - Click "Register & Login"
+7. **Explore the app**:
+   - View tasks on the Tasks page
+   - Create, edit, delete tasks on the Task Manager page
+   - Change task statuses (PENDING → IN_PROGRESS → DONE → ARCHIVED)
+8. **All data is stored in MongoDB** and associated with your Auth0 user account
 
 ---
 
-## How to test the UI/UX
+## Features
 
-1. **Open the front end** in your browser.
-2. Click **Login** in the header, or try to access `/tasks` or `/task-manager` directly (you’ll be redirected to login).
-3. Log in using the demo credentials:
-   - Username: `admin`
-   - Password: `123`
-4. Explore the **Tasks** and **Task Manager** pages:
-   - Create, edit, delete, and complete tasks.
-   - Refresh the page: your tasks are still there, because they are stored in `localStorage`.
-5. Optionally, register a new user:
-   - Switch to the **Register** tab on the login page.
-   - Create a new account and then add tasks for that user.
-   - Each user has isolated tasks, also stored in `localStorage`.
-6. Use **Logout** from the header to end your session and see the logout page.
+- ✅ **Auth0 authentication** with JWT Bearer tokens
+- ✅ **MongoDB** for persistent data storage
+- ✅ **GraphQL API** with Apollo Server
+- ✅ **Apollo Client** in frontend for GraphQL communication
+- ✅ **TanStack Query** for data caching and optimistic updates
+- ✅ **MVC architecture** in backend with clean separation
+- ✅ **DRY principles** with centralized HTTP status codes
+- ✅ **TypeScript** throughout for type safety
+- ✅ **Material UI** for responsive, modern UI
+- ✅ **Task status workflow**: PENDING → IN_PROGRESS → DONE → ARCHIVED
+- ✅ **User isolation**: Each user only sees their own tasks
+- ✅ **Token expiration handling**: Automatic logout when token expires
+- ✅ **Unique constraints**: Email and username must be unique
 
 ---
 
 ## Next steps / possible extensions
 
-- Replace `localStorage`‑based auth and tasks with a **GraphQL** API exposed by the Express back end.
-- Add input validation and error handling around all mutations.
-- Add filters/search and sorting for the tasks list.
-- Add tests (unit tests for state, component tests for pages, and possibly end‑to‑end tests).
-
-This setup is intentionally structured so that wiring GraphQL on top of the existing contexts and components is straightforward, while keeping the current UI fully functional for the purposes of the technical test.
-
+- Add input validation and error handling improvements
+- Add filters/search and sorting for the tasks list
+- Add pagination for tasks
+- Add tests (unit tests, integration tests, E2E tests)
+- Add real-time updates with GraphQL subscriptions
+- Add task due dates and priorities
+- Add task categories/tags

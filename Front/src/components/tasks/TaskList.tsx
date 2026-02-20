@@ -13,21 +13,51 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
-import type { Task } from '../../state/TaskContext'
+import type { Task } from '../../types/task'
 
 type Props = {
   tasks: Task[]
   onEdit?: (task: Task) => void
   onDelete?: (task: Task) => void
-  onToggleDone?: (task: Task) => void
+  onToggleStatus?: (task: Task) => void
   emptyMessage?: string
+}
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case 'PENDING':
+      return 'Pending'
+    case 'IN_PROGRESS':
+      return 'In Progress'
+    case 'DONE':
+      return 'Done'
+    case 'ARCHIVED':
+      return 'Archived'
+    default:
+      return status
+  }
+}
+
+const getStatusColor = (status: string): 'default' | 'secondary' | 'success' | 'warning' => {
+  switch (status) {
+    case 'PENDING':
+      return 'default'
+    case 'IN_PROGRESS':
+      return 'secondary'
+    case 'DONE':
+      return 'success'
+    case 'ARCHIVED':
+      return 'warning'
+    default:
+      return 'default'
+  }
 }
 
 export function TaskList({
   tasks,
   onEdit,
   onDelete,
-  onToggleDone,
+  onToggleStatus,
   emptyMessage = 'No tasks yet. Create your first one!',
 }: Props) {
   if (tasks.length === 0) {
@@ -68,28 +98,13 @@ export function TaskList({
                 <Typography
                   variant="subtitle1"
                   sx={{
-                    textDecoration: task.status === 'done' ? 'line-through' : 'none',
+                    textDecoration: task.status === 'DONE' || task.status === 'ARCHIVED' ? 'line-through' : 'none',
+                    opacity: task.status === 'ARCHIVED' ? 0.6 : 1,
                   }}
                 >
                   {task.title}
                 </Typography>
-                <Chip
-                  size="small"
-                  label={
-                    task.status === 'pending'
-                      ? 'Pending'
-                      : task.status === 'in-progress'
-                        ? 'In progress'
-                        : 'Done'
-                  }
-                  color={
-                    task.status === 'pending'
-                      ? 'default'
-                      : task.status === 'in-progress'
-                        ? 'secondary'
-                        : 'success'
-                  }
-                />
+                <Chip size="small" label={getStatusLabel(task.status)} color={getStatusColor(task.status)} />
               </Box>
             }
             secondary={
@@ -114,15 +129,15 @@ export function TaskList({
             }
           />
           <ListItemSecondaryAction>
-            {onToggleDone && (
-              <Tooltip title={task.status === 'done' ? 'Mark as pending' : 'Mark as done'}>
+            {onToggleStatus && (
+              <Tooltip title={`Change status from ${getStatusLabel(task.status)}`}>
                 <IconButton
                   edge="end"
-                  onClick={() => onToggleDone(task)}
+                  onClick={() => onToggleStatus(task)}
                   sx={{ mr: 0.5 }}
-                  color={task.status === 'done' ? 'default' : 'success'}
+                  color={task.status === 'DONE' ? 'success' : 'default'}
                 >
-                  {task.status === 'done' ? <RadioButtonUncheckedIcon /> : <CheckCircleIcon />}
+                  {task.status === 'DONE' ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
                 </IconButton>
               </Tooltip>
             )}
@@ -146,4 +161,3 @@ export function TaskList({
     </List>
   )
 }
-

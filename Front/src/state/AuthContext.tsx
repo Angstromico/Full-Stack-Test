@@ -7,138 +7,144 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-
-type User = {
-  username: string
-}
+import { useMutation, useQuery } from '@apollo/client'
+import { LOGIN_USER, REGISTER_USER } from '../api/mutations'
+import { GET_ME } from '../api/queries'
+import type { User } from '../types/task'
 
 type AuthContextValue = {
   user: User | null
   isAuthenticated: boolean
-  login: (username: string, password: string) => Promise<boolean>
-  register: (username: string, password: string) => Promise<boolean>
+  isLoading: boolean
+  login: (emailOrUsername: string, password: string) => Promise<boolean>
+  register: (name: string, email: string, username: string | undefined, password: string) => Promise<boolean>
   logout: () => void
+  getToken: () => string | null
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-const USERS_KEY = 'task-crud:users'
-const SESSION_KEY = 'task-crud:session'
+const TOKEN_KEY = 'auth_token'
 
-type StoredUser = {
-  username: string
-  password: string
-}
-
-function readUsersFromStorage(): StoredUser[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const raw = window.localStorage.getItem(USERS_KEY)
-    if (!raw) {
-      return [
-        {
-          username: 'admin',
-          password: '123',
-        },
-      ]
-    }
-    const parsed = JSON.parse(raw) as StoredUser[]
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return [
-        {
-          username: 'admin',
-          password: '123',
-        },
-      ]
-    }
-    return parsed
-  } catch {
-    return [
-      {
-        username: 'admin',
-        password: '123',
-      },
-    ]
-  }
-}
-
-function writeUsersToStorage(users: StoredUser[]) {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(USERS_KEY, JSON.stringify(users))
-}
-
-function readSessionFromStorage(): User | null {
+function getTokenFromStorage(): string | null {
   if (typeof window === 'undefined') return null
-  try {
-    const raw = window.localStorage.getItem(SESSION_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as User
-    return parsed ?? null
-  } catch {
-    return null
-  }
+  return localStorage.getItem(TOKEN_KEY)
 }
 
-function writeSessionToStorage(user: User | null) {
+function setTokenInStorage(token: string | null): void {
   if (typeof window === 'undefined') return
-  if (!user) {
-    window.localStorage.removeItem(SESSION_KEY)
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token)
   } else {
-    window.localStorage.setItem(SESSION_KEY, JSON.stringify(user))
+    localStorage.removeItem(TOKEN_KEY)
   }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => readSessionFromStorage())
-  const [users, setUsers] = useState<StoredUser[]>(() => readUsersFromStorage())
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoadingUser, setIsLoadingUser] = useState(false)
+  const [token, setToken] = useState<string | null>(() => getTokenFromStorage())
+
+  const [loginMutation] = useMutation(LOGIN_USER)
+  const [registerMutation] = useMutation(REGISTER_USER)
+
+  // Fetch user data when token exists
+  const { data: userData, loading: loadingUser, refetch: refetchUser } = useQuery(GET_ME, {
+    skip: !token,
+    fetchPolicy: 'network-only',
+    onError: () => {
+      // If query fails, token might be invalid, clear it
+      setToken(null)
+      setTokenInStorage(null)
+      setUser(null)
+    },
+  })
 
   useEffect(() => {
-    writeUsersToStorage(users)
-  }, [users])
-
-  useEffect(() => {
-    writeSessionToStorage(user)
-  }, [user])
+    if (userData?.me) {
+      setUser(userData.me)
+    } else if (!token) {
+      setUser(null)
+    }
+  }, [userData, token])
 
   const login = useCallback(
-    async (username: string, password: string) => {
-      const existing = users.find((u) => u.username === username && u.password === password)
-      if (!existing) {
+    async (emailOrUsername: string, password: string): Promise<boolean> => {
+      try {
+        setIsLoadingUser(true)
+        const result = await loginMutation({
+          variables: { emailOrUsername, password },
+        })
+
+        if (result.data?.loginUser?.token && result.data?.loginUser?.user) {
+          const authToken = result.data.loginUser.token
+          setToken(authToken)
+          setTokenInStorage(authToken)
+          setUser(result.data.loginUser.user)
+          // Refetch user to ensure consistency
+          await refetchUser()
+          return true
+        }
         return false
+      } catch (error: any) {
+        console.error('Login error:', error)
+        return false
+      } finally {
+        setIsLoadingUser(false)
       }
-      setUser({ username: existing.username })
-      return true
     },
-    [users],
+    [loginMutation, refetchUser],
   )
 
   const register = useCallback(
-    async (username: string, password: string) => {
-      const existing = users.find((u) => u.username === username)
-      if (existing) {
+    async (name: string, email: string, username: string | undefined, password: string): Promise<boolean> => {
+      try {
+        setIsLoadingUser(true)
+        const result = await registerMutation({
+          variables: { name, email, username, password },
+        })
+
+        if (result.data?.registerUser?.token && result.data?.registerUser?.user) {
+          const authToken = result.data.registerUser.token
+          setToken(authToken)
+          setTokenInStorage(authToken)
+          setUser(result.data.registerUser.user)
+          // Refetch user to ensure consistency
+          await refetchUser()
+          return true
+        }
         return false
+      } catch (error: any) {
+        console.error('Register error:', error)
+        return false
+      } finally {
+        setIsLoadingUser(false)
       }
-      const nextUsers = [...users, { username, password }]
-      setUsers(nextUsers)
-      setUser({ username })
-      return true
     },
-    [users],
+    [registerMutation, refetchUser],
   )
 
   const logout = useCallback(() => {
+    setToken(null)
+    setTokenInStorage(null)
     setUser(null)
   }, [])
+
+  const getToken = useCallback(() => {
+    return token
+  }, [token])
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
-      isAuthenticated: Boolean(user),
+      isAuthenticated: Boolean(token && user),
+      isLoading: isLoadingUser || loadingUser,
       login,
       register,
       logout,
+      getToken,
     }),
-    [user, login, register, logout],
+    [user, token, isLoadingUser, loadingUser, login, register, logout, getToken],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
@@ -151,4 +157,3 @@ export function useAuth() {
   }
   return ctx
 }
-

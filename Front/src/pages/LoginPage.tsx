@@ -4,12 +4,13 @@ import {
   Button,
   Card,
   CardContent,
+  CircularProgress,
   Tab,
   Tabs,
   TextField,
   Typography,
 } from '@mui/material'
-import { FormEvent, useState } from 'react'
+import { FormEvent, useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../state/AuthContext'
 
@@ -19,38 +20,160 @@ type LocationState = {
 
 export function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const { login, register } = useAuth()
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null)
+  const { login, register, isLoading, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const state = location.state as LocationState | null
 
-  const handleSubmit = async (event: FormEvent) => {
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(state?.from ?? '/tasks', { replace: true })
+    }
+  }, [isAuthenticated, navigate, state])
+
+  // Reset form when switching tabs
+  useEffect(() => {
+    if (mode === 'login') {
+      setPassword('')
+      setConfirmPassword('')
+      setPasswordError(null)
+      setConfirmPasswordError(null)
+    }
+  }, [mode])
+
+  // Validate password requirements
+  const validatePassword = (pwd: string): string | null => {
+    if (pwd.length === 0) {
+      return null // Don't show error for empty field until user tries to submit
+    }
+    if (pwd.length < 6) {
+      return 'Password must be at least 6 characters long'
+    }
+    return null
+  }
+
+  // Validate password confirmation
+  const validateConfirmPassword = (pwd: string, confirmPwd: string): string | null => {
+    if (confirmPwd.length === 0) {
+      return null // Don't show error for empty field until user tries to submit
+    }
+    if (pwd !== confirmPwd) {
+      return 'Passwords do not match'
+    }
+    return null
+  }
+
+  // Handle password change
+  const handlePasswordChange = (newPassword: string) => {
+    setPassword(newPassword)
+    if (mode === 'register') {
+      setPasswordError(validatePassword(newPassword))
+      if (confirmPassword) {
+        setConfirmPasswordError(validateConfirmPassword(newPassword, confirmPassword))
+      }
+    }
+  }
+
+  // Handle confirm password change
+  const handleConfirmPasswordChange = (newConfirmPassword: string) => {
+    setConfirmPassword(newConfirmPassword)
+    if (mode === 'register') {
+      setConfirmPasswordError(validateConfirmPassword(password, newConfirmPassword))
+    }
+  }
+
+  const handleLogin = async (event: FormEvent) => {
     event.preventDefault()
     setError(null)
 
-    if (!username.trim() || !password.trim()) {
-      setError('Please fill in both fields.')
+    if (!email.trim() || !password.trim()) {
+      setError('Please fill in both email/username and password.')
       return
     }
 
-    if (mode === 'login') {
-      const ok = await login(username.trim(), password.trim())
-      if (!ok) {
-        setError('Invalid credentials. Try again or register a new account.')
-        return
+    try {
+      const success = await login(email.trim(), password)
+      if (success) {
+        navigate(state?.from ?? '/tasks', { replace: true })
+      } else {
+        setError('Invalid email/username or password. Please try again.')
       }
-    } else {
-      const ok = await register(username.trim(), password.trim())
-      if (!ok) {
-        setError('This username is already taken. Please choose another one.')
-        return
-      }
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please try again.')
+    }
+  }
+
+  const handleRegister = async (event: FormEvent) => {
+    event.preventDefault()
+    setError(null)
+
+    // Validate all fields
+    if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
+      setError('All fields are required.')
+      return
     }
 
-    navigate(state?.from ?? '/tasks', { replace: true })
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address.')
+      return
+    }
+
+    // Validate password requirements
+    const pwdError = validatePassword(password)
+    if (pwdError) {
+      setPasswordError(pwdError)
+      setError(pwdError)
+      return
+    }
+
+    // Validate password match
+    const confirmPwdError = validateConfirmPassword(password, confirmPassword)
+    if (confirmPwdError) {
+      setConfirmPasswordError(confirmPwdError)
+      setError(confirmPwdError)
+      return
+    }
+
+    // Clear any previous errors
+    setPasswordError(null)
+    setConfirmPasswordError(null)
+
+    try {
+      const success = await register(name.trim(), email.trim(), username.trim() || undefined, password)
+      if (success) {
+        navigate(state?.from ?? '/tasks', { replace: true })
+      } else {
+        setError('Registration failed. This email or username may already be in use.')
+      }
+    } catch (err: any) {
+      setError(err.message || 'Registration failed. Please try again.')
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    )
   }
 
   return (
@@ -73,7 +196,12 @@ export function LoginPage() {
       >
         <Tabs
           value={mode}
-          onChange={(_, value) => setMode(value)}
+          onChange={(_, value) => {
+            setMode(value)
+            setError(null)
+            setPasswordError(null)
+            setConfirmPasswordError(null)
+          }}
           variant="fullWidth"
           aria-label="Login or register"
         >
@@ -85,37 +213,96 @@ export function LoginPage() {
             {mode === 'login' ? 'Welcome back' : 'Create an account'}
           </Typography>
           <Typography variant="body2" color="text.secondary" mb={2}>
-            Use the demo credentials <strong>admin / 123</strong> or register your own account.
+            {mode === 'login'
+              ? 'Sign in with your email or username and password.'
+              : 'Create a new account. All fields are required except username (will be generated from email if not provided).'}
           </Typography>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}
             </Alert>
           )}
-          <Box component="form" onSubmit={handleSubmit} noValidate sx={{ display: 'grid', gap: 2.5 }}>
-            <TextField
-              label="Username"
-              autoComplete="username"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              fullWidth
-              autoFocus
-            />
-            <TextField
-              label="Password"
-              type="password"
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              fullWidth
-            />
-            <Button type="submit" variant="contained" size="large" sx={{ mt: 1 }}>
-              {mode === 'login' ? 'Login' : 'Register & login'}
-            </Button>
-          </Box>
+          {mode === 'login' ? (
+            <Box component="form" onSubmit={handleLogin} noValidate sx={{ display: 'grid', gap: 2.5 }}>
+              <TextField
+                label="Email or Username"
+                autoComplete="username"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                fullWidth
+                required
+                autoFocus
+              />
+              <TextField
+                label="Password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                fullWidth
+                required
+              />
+              <Button type="submit" variant="contained" size="large" sx={{ mt: 1 }} disabled={isLoading}>
+                {isLoading ? 'Logging in...' : 'Login'}
+              </Button>
+            </Box>
+          ) : (
+            <Box component="form" onSubmit={handleRegister} noValidate sx={{ display: 'grid', gap: 2.5 }}>
+              <TextField
+                label="Name"
+                autoComplete="name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                fullWidth
+                required
+                autoFocus
+              />
+              <TextField
+                label="Email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                fullWidth
+                required
+              />
+              <TextField
+                label="Username (optional)"
+                autoComplete="username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                fullWidth
+                helperText="If not provided, will be generated from your email"
+              />
+              <TextField
+                label="Password"
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(event) => handlePasswordChange(event.target.value)}
+                fullWidth
+                required
+                error={!!passwordError}
+                helperText={passwordError || 'Must be at least 6 characters'}
+              />
+              <TextField
+                label="Confirm Password"
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(event) => handleConfirmPasswordChange(event.target.value)}
+                fullWidth
+                required
+                error={!!confirmPasswordError}
+                helperText={confirmPasswordError || 'Re-enter your password'}
+              />
+              <Button type="submit" variant="contained" size="large" sx={{ mt: 1 }} disabled={isLoading}>
+                {isLoading ? 'Registering...' : 'Register & Login'}
+              </Button>
+            </Box>
+          )}
         </CardContent>
       </Card>
     </Box>
   )
 }
-
