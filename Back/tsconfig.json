@@ -1,12 +1,16 @@
 {
   "compilerOptions": {
+    "types": ["node", "jest"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "target": "ES2020",
     "baseUrl": "src",
     "outDir": "dist",
     "sourceMap": true,
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
   },
   "include": ["src/**/*"]
 }
