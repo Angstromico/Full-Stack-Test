@@ -17,7 +17,12 @@ type AuthContextValue = {
   isAuthenticated: boolean
   isLoading: boolean
   login: (emailOrUsername: string, password: string) => Promise<boolean>
-  register: (name: string, email: string, username: string | undefined, password: string) => Promise<boolean>
+  register: (
+    name: string,
+    email: string,
+    username: string | undefined,
+    password: string,
+  ) => Promise<boolean>
   logout: () => void
   getToken: () => string | null
 }
@@ -49,7 +54,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [registerMutation] = useMutation(REGISTER_USER)
 
   // Fetch user data when token exists
-  const { data: userData, loading: loadingUser, refetch: refetchUser } = useQuery(GET_ME, {
+  const {
+    data: userData,
+    loading: loadingUser,
+    refetch: refetchUser,
+  } = useQuery(GET_ME, {
     skip: !token,
     fetchPolicy: 'network-only',
     onError: () => {
@@ -86,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return true
         }
         return false
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Login error:', error)
         return false
       } finally {
@@ -97,14 +106,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const register = useCallback(
-    async (name: string, email: string, username: string | undefined, password: string): Promise<boolean> => {
+    async (
+      name: string,
+      email: string,
+      username: string | undefined,
+      password: string,
+    ): Promise<boolean> => {
       try {
         setIsLoadingUser(true)
         const result = await registerMutation({
           variables: { name, email, username, password },
         })
 
-        if (result.data?.registerUser?.token && result.data?.registerUser?.user) {
+        if (
+          result.data?.registerUser?.token &&
+          result.data?.registerUser?.user
+        ) {
           const authToken = result.data.registerUser.token
           setToken(authToken)
           setTokenInStorage(authToken)
@@ -114,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return true
         }
         return false
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Register error:', error)
         return false
       } finally {
@@ -144,7 +161,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       getToken,
     }),
-    [user, token, isLoadingUser, loadingUser, login, register, logout, getToken],
+    [
+      user,
+      token,
+      isLoadingUser,
+      loadingUser,
+      login,
+      register,
+      logout,
+      getToken,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
