@@ -32,22 +32,22 @@ export function Header() {
   ]
 
   return (
-    <AppBar position="static" color="primary" enableColorOnDark>
+    <AppBar position='static' color='primary' enableColorOnDark>
       <Toolbar sx={{ gap: 2 }}>
         {isMobile && (
           <IconButton
-            color="inherit"
-            edge="start"
+            color='inherit'
+            edge='start'
             onClick={() => setMenuOpen((prev) => !prev)}
-            aria-label="menu"
+            aria-label='menu'
           >
             <MenuIcon />
           </IconButton>
         )}
         <Typography
-          variant="h6"
+          variant='h6'
           component={RouterLink}
-          to="/tasks"
+          to='/tasks'
           sx={{
             flexGrow: { xs: 1, sm: 0 },
             textDecoration: 'none',
@@ -93,7 +93,7 @@ export function Header() {
         >
           {isAuthenticated && user && (
             <Typography
-              variant="body2"
+              variant='body2'
               sx={{ display: { xs: 'none', md: 'block' }, maxWidth: 160 }}
               noWrap
             >
@@ -102,8 +102,8 @@ export function Header() {
           )}
           {isAuthenticated ? (
             <Button
-              color="inherit"
-              variant="outlined"
+              color='inherit'
+              variant='outlined'
               onClick={handleLogout}
               sx={{ textTransform: 'none', borderRadius: 999 }}
             >
@@ -111,10 +111,10 @@ export function Header() {
             </Button>
           ) : (
             <Button
-              color="inherit"
-              variant="outlined"
+              color='inherit'
+              variant='outlined'
               component={RouterLink}
-              to="/login"
+              to='/login'
               sx={{ textTransform: 'none', borderRadius: 999 }}
             >
               Login
@@ -125,4 +125,3 @@ export function Header() {
     </AppBar>
   )
 }
-

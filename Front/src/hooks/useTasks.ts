@@ -1,7 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useApolloClient } from '@apollo/client'
 import { GET_TASKS } from '../api/queries'
-import { CREATE_TASK, UPDATE_TASK, DELETE_TASK, CHANGE_TASK_STATUS } from '../api/mutations'
+import {
+  CREATE_TASK,
+  UPDATE_TASK,
+  DELETE_TASK,
+  CHANGE_TASK_STATUS,
+} from '../api/mutations'
 import type { Task, TaskStatus } from '../types/task'
 
 export function useTasks() {
@@ -20,7 +25,13 @@ export function useTasks() {
   })
 
   const createTaskMutation = useMutation({
-    mutationFn: async ({ title, description }: { title: string; description?: string }) => {
+    mutationFn: async ({
+      title,
+      description,
+    }: {
+      title: string
+      description?: string
+    }) => {
       const result = await apolloClient.mutate({
         mutation: CREATE_TASK,
         variables: { title, description },
@@ -33,7 +44,15 @@ export function useTasks() {
   })
 
   const updateTaskMutation = useMutation({
-    mutationFn: async ({ id, title, description }: { id: string; title?: string; description?: string }) => {
+    mutationFn: async ({
+      id,
+      title,
+      description,
+    }: {
+      id: string
+      title?: string
+      description?: string
+    }) => {
       const result = await apolloClient.mutate({
         mutation: UPDATE_TASK,
         variables: { id, title, description },

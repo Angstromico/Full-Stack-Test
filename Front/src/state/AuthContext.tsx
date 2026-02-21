@@ -27,7 +27,9 @@ type AuthContextValue = {
   getToken: () => string | null
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined)
+export const AuthContext = createContext<AuthContextValue | undefined>(
+  undefined,
+)
 
 const TOKEN_KEY = 'auth_token'
 
