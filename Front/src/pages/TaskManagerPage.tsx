@@ -1,4 +1,10 @@
-import { Box, CircularProgress, Divider, Grid2 as Grid, Typography } from '@mui/material'
+import {
+  Box,
+  CircularProgress,
+  Divider,
+  Grid2 as Grid,
+  Typography,
+} from '@mui/material'
 import { useState } from 'react'
 import { useTasks } from '../hooks/useTasks'
 import { TaskForm } from '../components/tasks/TaskForm'
@@ -6,7 +12,14 @@ import { TaskList } from '../components/tasks/TaskList'
 import type { Task } from '../types/task'
 
 export function TaskManagerPage() {
-  const { tasks, isLoading, createTask, updateTask, deleteTask, changeTaskStatus } = useTasks()
+  const {
+    tasks,
+    isLoading,
+    createTask,
+    updateTask,
+    deleteTask,
+    changeTaskStatus,
+  } = useTasks()
   const [editing, setEditing] = useState<Task | undefined>(undefined)
 
   const handleCreate = (input: { title: string; description?: string }) => {
@@ -15,7 +28,11 @@ export function TaskManagerPage() {
 
   const handleEdit = (input: { title: string; description?: string }) => {
     if (!editing) return
-    updateTask({ id: editing.id, title: input.title, description: input.description })
+    updateTask({
+      id: editing.id,
+      title: input.title,
+      description: input.description,
+    })
     setEditing(undefined)
   }
 
@@ -32,13 +49,16 @@ export function TaskManagerPage() {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
+    <Box
+      sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}
+    >
       <Box>
-        <Typography variant="h4" gutterBottom>
+        <Typography variant='h4' gutterBottom>
           Task manager
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Create, update, and delete tasks. All changes are saved to MongoDB and associated with your account.
+        <Typography variant='body2' color='text.secondary'>
+          Create, update, and delete tasks. All changes are saved to MongoDB and
+          associated with your account.
         </Typography>
       </Box>
       <Divider />
@@ -56,10 +76,11 @@ export function TaskManagerPage() {
               gap: 2,
             }}
           >
-            <Typography variant="h6">
+            <Typography variant='h6'>
               {editing ? 'Edit task' : 'Create a new task'}
             </Typography>
             <TaskForm
+              key={editing ? `edit-${editing.id}` : 'create-new'}
               initialTask={editing}
               onSubmit={editing ? handleEdit : handleCreate}
               onCancel={() => setEditing(undefined)}
@@ -73,16 +94,18 @@ export function TaskManagerPage() {
               minHeight: 0,
             }}
           >
-            <Typography variant="h6" sx={{ mb: 1 }}>
+            <Typography variant='h6' sx={{ mb: 1 }}>
               All tasks
             </Typography>
-            <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', pr: { sm: 1 } }}>
+            <Box
+              sx={{ flex: 1, minHeight: 0, overflow: 'auto', pr: { sm: 1 } }}
+            >
               <TaskList
                 tasks={tasks}
                 onEdit={setEditing}
                 onDelete={(task) => deleteTask(task.id)}
                 onToggleStatus={handleToggleStatus}
-                emptyMessage="No tasks yet. Use the form on the left to add one."
+                emptyMessage='No tasks yet. Use the form on the left to add one.'
               />
             </Box>
           </Grid>
