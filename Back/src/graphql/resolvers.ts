@@ -2,6 +2,7 @@ import mongoose from 'mongoose'
 import { User } from '../models/User'
 import { Task, TaskStatus } from '../models/Task'
 import { generateToken } from '../middleware/auth'
+import { generateRandomId } from '../helpers/utils'
 
 export interface GraphQLContext {
   userId?: string
@@ -38,7 +39,9 @@ export const resolvers = {
       }
 
       const userIdObjectId = new mongoose.Types.ObjectId(context.userId)
-      const tasks = await Task.find({ userId: userIdObjectId }).sort({ updatedAt: -1 })
+      const tasks = await Task.find({ userId: userIdObjectId }).sort({
+        updatedAt: -1,
+      })
 
       return tasks.map((task) => ({
         id: task._id.toString(),
@@ -51,14 +54,21 @@ export const resolvers = {
       }))
     },
 
-    task: async (_: unknown, { id }: { id: string }, context: GraphQLContext) => {
+    task: async (
+      _: unknown,
+      { id }: { id: string },
+      context: GraphQLContext,
+    ) => {
       if (!context.userId) {
         throw new Error('Authentication required')
       }
 
       const userIdObjectId = new mongoose.Types.ObjectId(context.userId)
       const taskIdObjectId = new mongoose.Types.ObjectId(id)
-      const task = await Task.findOne({ _id: taskIdObjectId, userId: userIdObjectId })
+      const task = await Task.findOne({
+        _id: taskIdObjectId,
+        userId: userIdObjectId,
+      })
       if (!task) {
         throw new Error('Task not found')
       }
@@ -78,12 +88,20 @@ export const resolvers = {
   Mutation: {
     registerUser: async (
       _: unknown,
-      { name, email, username, password }: { name: string; email: string; username?: string; password: string },
+      {
+        name,
+        email,
+        username,
+        password,
+      }: { name: string; email: string; username?: string; password: string },
       context: GraphQLContext,
     ) => {
       // Check if user already exists
       const existingUser = await User.findOne({
-        $or: [{ email: email.toLowerCase() }, { username: (username || email.split('@')[0]).toLowerCase() }],
+        $or: [
+          { email: email.toLowerCase() },
+          { username: (username || email.split('@')[0]).toLowerCase() },
+        ],
       })
 
       if (existingUser) {
@@ -94,12 +112,17 @@ export const resolvers = {
         name,
         email: email.toLowerCase(),
         username: (username || email.split('@')[0]).toLowerCase(),
-        password, // Will be hashed by pre-save hook
+        password,
+        auth0Id: generateRandomId(),
       })
 
       await user.save()
 
-      const token = generateToken(user._id.toString(), user.email, user.username)
+      const token = generateToken(
+        user._id.toString(),
+        user.email,
+        user.username,
+      )
 
       return {
         token,
@@ -114,12 +137,18 @@ export const resolvers = {
 
     loginUser: async (
       _: unknown,
-      { emailOrUsername, password }: { emailOrUsername: string; password: string },
+      {
+        emailOrUsername,
+        password,
+      }: { emailOrUsername: string; password: string },
       context: GraphQLContext,
     ) => {
       // Find user by email or username
       const user = await User.findOne({
-        $or: [{ email: emailOrUsername.toLowerCase() }, { username: emailOrUsername.toLowerCase() }],
+        $or: [
+          { email: emailOrUsername.toLowerCase() },
+          { username: emailOrUsername.toLowerCase() },
+        ],
       }).select('+password') // Include password field
 
       if (!user) {
@@ -132,7 +161,11 @@ export const resolvers = {
         throw new Error('Invalid email/username or password')
       }
 
-      const token = generateToken(user._id.toString(), user.email, user.username)
+      const token = generateToken(
+        user._id.toString(),
+        user.email,
+        user.username,
+      )
 
       return {
         token,
@@ -181,7 +214,11 @@ export const resolvers = {
 
     updateTask: async (
       _: unknown,
-      { id, title, description }: { id: string; title?: string; description?: string },
+      {
+        id,
+        title,
+        description,
+      }: { id: string; title?: string; description?: string },
       context: GraphQLContext,
     ) => {
       if (!context.userId) {
@@ -190,7 +227,10 @@ export const resolvers = {
 
       const userIdObjectId = new mongoose.Types.ObjectId(context.userId)
       const taskIdObjectId = new mongoose.Types.ObjectId(id)
-      const task = await Task.findOne({ _id: taskIdObjectId, userId: userIdObjectId })
+      const task = await Task.findOne({
+        _id: taskIdObjectId,
+        userId: userIdObjectId,
+      })
       if (!task) {
         throw new Error('Task not found')
       }
@@ -219,14 +259,21 @@ export const resolvers = {
       }
     },
 
-    deleteTask: async (_: unknown, { id }: { id: string }, context: GraphQLContext) => {
+    deleteTask: async (
+      _: unknown,
+      { id }: { id: string },
+      context: GraphQLContext,
+    ) => {
       if (!context.userId) {
         throw new Error('Authentication required')
       }
 
       const userIdObjectId = new mongoose.Types.ObjectId(context.userId)
       const taskIdObjectId = new mongoose.Types.ObjectId(id)
-      const task = await Task.findOneAndDelete({ _id: taskIdObjectId, userId: userIdObjectId })
+      const task = await Task.findOneAndDelete({
+        _id: taskIdObjectId,
+        userId: userIdObjectId,
+      })
       if (!task) {
         throw new Error('Task not found')
       }
@@ -244,12 +291,17 @@ export const resolvers = {
       }
 
       if (!['PENDING', 'IN_PROGRESS', 'DONE', 'ARCHIVED'].includes(status)) {
-        throw new Error('Valid status is required (PENDING, IN_PROGRESS, DONE, ARCHIVED)')
+        throw new Error(
+          'Valid status is required (PENDING, IN_PROGRESS, DONE, ARCHIVED)',
+        )
       }
 
       const userIdObjectId = new mongoose.Types.ObjectId(context.userId)
       const taskIdObjectId = new mongoose.Types.ObjectId(id)
-      const task = await Task.findOne({ _id: taskIdObjectId, userId: userIdObjectId })
+      const task = await Task.findOne({
+        _id: taskIdObjectId,
+        userId: userIdObjectId,
+      })
       if (!task) {
         throw new Error('Task not found')
       }

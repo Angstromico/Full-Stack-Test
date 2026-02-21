@@ -9,6 +9,7 @@ export interface IUser extends Document {
   createdAt: Date
   updatedAt: Date
   comparePassword(candidatePassword: string): Promise<boolean>
+  auth0Id?: string
 }
 
 const UserSchema = new Schema<IUser>(
@@ -39,6 +40,11 @@ const UserSchema = new Schema<IUser>(
       required: [true, 'Password is required'],
       minlength: [6, 'Password must be at least 6 characters'],
       select: false, // Don't include password in queries by default
+    },
+    auth0Id: {
+      type: String,
+      unique: true,
+      sparse: true, // Allows multiple null values
     },
   },
   {
