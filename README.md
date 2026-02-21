@@ -352,6 +352,122 @@ Then open the URL that Vite prints in the terminal (typically `http://localhost:
    - Change task statuses (PENDING → IN_PROGRESS → DONE → ARCHIVED)
 8. **All data is stored in MongoDB** and associated with your Auth0 user account
 
+## Testing Strategy
+
+This project implements a comprehensive testing approach covering unit tests, integration tests, and end-to-end tests:
+
+### Backend Testing (Jest + TypeScript)
+
+**Framework**: Jest with TypeScript support via `ts-jest`
+
+**Configuration**: `Back/jest.config.js`
+- TypeScript compilation with isolated modules
+- Node.js test environment
+- Module path resolution for `src/` directory
+
+**Test Structure**: `Back/src/tests/`
+- Unit tests for controllers, models, and utilities
+- Mock implementations for external dependencies (MongoDB, Auth0)
+- HTTP status code testing for API endpoints
+
+**Running Tests**:
+```bash
+cd Back
+npm test                    # Run all tests
+npm run test:watch          # Run tests in watch mode
+npm run test:coverage       # Generate coverage report
+```
+
+**Example Test Structure**:
+```typescript
+// Controller test example
+describe('Unit Test: registerUser Controller', () => {
+  let mockReq: Partial<Request> | any
+  let mockRes: Partial<Response> | any
+  let next: any = jest.fn()
+
+  beforeEach(() => {
+    // Setup mocks
+  })
+
+  it('should register user successfully', async () => {
+    // Test implementation
+  })
+})
+```
+
+**Coverage Reports**: Tests generate detailed coverage reports showing:
+- Function coverage
+- Statement coverage  
+- Branch coverage
+- Line coverage
+
+### Frontend Testing (Cypress)
+
+**Framework**: Cypress for component and E2E testing
+
+**Configuration**: `Front/cypress.config.ts`
+- Component testing with React + Vite
+- E2E testing setup
+- Custom event handlers and plugins
+
+**Test Structure**: 
+- `Front/cypress/component/` - Component tests
+- `Front/cypress/e2e/` - End-to-end tests
+- `Front/cypress/fixtures/` - Test data and mocks
+
+**Running Tests**:
+```bash
+cd Front
+npm run test            # Open Cypress test runner
+npm run test:component  # Run component tests
+npm run test:e2e        # Run E2E tests
+```
+
+**Component Testing Example**:
+```typescript
+// Header component test
+describe('Header component', () => {
+  it('shows Login when not authenticated', () => {
+    cy.mount(
+      <AuthContext.Provider value={{ isAuthenticated: false }}>
+        <Header />
+      </AuthContext.Provider>
+    )
+    cy.contains('Login').should('be.visible')
+  })
+})
+```
+
+**E2E Testing Features**:
+- Full user journey testing
+- Authentication flow testing
+- CRUD operation testing
+- Cross-browser compatibility
+- Visual regression testing
+
+### Testing Best Practices
+
+**Backend Testing**:
+- **Mock External Dependencies**: MongoDB, Auth0, external APIs
+- **Test HTTP Responses**: Status codes, headers, response bodies
+- **Error Scenarios**: Test failure cases and edge conditions
+- **Database Operations**: Test model validations and queries
+- **Authentication**: Test JWT token validation and user isolation
+
+**Frontend Testing**:
+- **Component Isolation**: Test components in isolation with mocked dependencies
+- **User Interactions**: Test clicks, forms, navigation
+- **State Management**: Test context providers and state changes
+- **API Integration**: Test GraphQL queries and mutations
+- **Responsive Design**: Test different viewport sizes
+
+**Continuous Integration**:
+- Automated test runs on pull requests
+- Coverage thresholds enforcement
+- Test result reporting
+- Performance regression testing
+
 ---
 
 ## Features
