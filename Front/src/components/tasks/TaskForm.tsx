@@ -6,9 +6,15 @@ type Props = {
   initialTask?: Task
   onSubmit: (data: { title: string; description?: string }) => void
   onCancel?: () => void
+  isReadOnly?: boolean
 }
 
-export function TaskForm({ initialTask, onSubmit, onCancel }: Props) {
+export function TaskForm({
+  initialTask,
+  onSubmit,
+  onCancel,
+  isReadOnly = false,
+}: Props) {
   const [title, setTitle] = useState(initialTask?.title ?? '')
   const [description, setDescription] = useState(initialTask?.description ?? '')
 
@@ -42,6 +48,13 @@ export function TaskForm({ initialTask, onSubmit, onCancel }: Props) {
           minRows={3}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
+          disabled={isReadOnly}
+          sx={{
+            '& .MuiInputBase-input.Mui-disabled': {
+              backgroundColor: 'action.hover',
+              cursor: 'not-allowed',
+            },
+          }}
         />
         <Stack direction='row' spacing={1} justifyContent='flex-end'>
           {onCancel && (

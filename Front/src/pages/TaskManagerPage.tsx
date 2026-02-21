@@ -5,7 +5,7 @@ import {
   Grid2 as Grid,
   Typography,
 } from '@mui/material'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTasks } from '../hooks/useTasks'
 import { TaskForm } from '../components/tasks/TaskForm'
 import { TaskList } from '../components/tasks/TaskList'
@@ -21,6 +21,7 @@ export function TaskManagerPage() {
     changeTaskStatus,
   } = useTasks()
   const [editing, setEditing] = useState<Task | undefined>(undefined)
+  const [isFormReadOnly, setIsFormReadOnly] = useState(false)
 
   const handleCreate = (input: { title: string; description?: string }) => {
     createTask(input)
@@ -37,6 +38,12 @@ export function TaskManagerPage() {
   }
 
   const handleToggleStatus = (task: Task) => {
+    if (task.status !== 'IN_PROGRESS') {
+      setIsFormReadOnly(false)
+    } else {
+      setIsFormReadOnly(true)
+    }
+
     if (task.status === 'PENDING') {
       changeTaskStatus({ id: task.id, status: 'IN_PROGRESS' })
     } else if (task.status === 'IN_PROGRESS') {
@@ -84,6 +91,7 @@ export function TaskManagerPage() {
               initialTask={editing}
               onSubmit={editing ? handleEdit : handleCreate}
               onCancel={() => setEditing(undefined)}
+              isReadOnly={isFormReadOnly}
             />
           </Grid>
           <Grid
