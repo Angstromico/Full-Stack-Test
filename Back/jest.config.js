@@ -7,7 +7,7 @@ module.exports = {
     '^.+\\.tsx?$': [
       'ts-jest',
       {
-        isolatedModules: true,
+        // isolatedModules moved to tsconfig.json
       },
     ],
   },

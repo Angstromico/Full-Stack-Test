@@ -78,8 +78,8 @@ UserSchema.methods.comparePassword = async function (
   return bcrypt.compare(candidatePassword, this.password)
 }
 
-// Indexes for faster queries
-UserSchema.index({ email: 1 })
-UserSchema.index({ username: 1 })
+// Indexes for faster queries (unique: true in schema definition already creates indexes)
+// UserSchema.index({ email: 1 })
+// UserSchema.index({ username: 1 })
 
 export const User = mongoose.model<IUser>('User', UserSchema)

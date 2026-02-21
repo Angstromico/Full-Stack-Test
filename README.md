@@ -17,7 +17,7 @@ This repository contains a full‑stack implementation of the **Technical Test �
   - Uses **TanStack Query** for data caching and state management
   - Uses **Auth0** for authentication
 - `Back/`: Express + TypeScript back end with GraphQL API
-  - **MVC architecture** with controllers, models, and GraphQL resolvers
+  - **GraphQL resolvers** handling all business logic
   - **MongoDB** for data persistence
   - **Auth0 JWT Bearer** middleware for authentication
   - **GraphQL** API with Apollo Server
@@ -36,7 +36,7 @@ This repository contains a full‑stack implementation of the **Technical Test �
 
 ### Architecture overview
 
-The back end follows **MVC architecture** with clean separation of concerns:
+The back end follows **GraphQL-first architecture** with clean separation of concerns:
 
 #### Folder structure
 
@@ -44,7 +44,6 @@ The back end follows **MVC architecture** with clean separation of concerns:
 Back/
 ├── src/
 │   ├── config/          # Configuration files (database, environment)
-│   ├── controllers/     # Business logic controllers
 │   ├── graphql/         # GraphQL schema, resolvers, and context
 │   ├── helpers/         # Helper utilities (HTTP status codes)
 │   ├── middleware/     # Express middleware (Auth0 JWT)
@@ -67,8 +66,9 @@ Back/
   - Type-safe access to `PORT`, `MONGODB`, and Auth0 credentials
 
 - **`src/models/User.ts`**
-  - User model with `name`, `email`, `username`, `auth0Id`
+  - User model with `name`, `email`, `username`, `password`
   - Both `email` and `username` are unique and indexed
+  - Password hashing with bcryptjs
   - Timestamps for `createdAt` and `updatedAt`
 
 - **`src/models/Task.ts`**
@@ -76,86 +76,26 @@ Back/
   - Status enum: `PENDING` → `IN_PROGRESS` → `DONE` → `ARCHIVED`
   - Indexed by `userId` and `status` for efficient queries
 
-- **`src/middleware/auth0.ts`**
-  - Auth0 JWT Bearer middleware using `express-oauth2-jwt-bearer`
-  - Validates JWT tokens and attaches payload to `req.auth`
-
-- **`src/controllers/authController.ts`**
-  - `registerUser`: Creates new user after Auth0 authentication
-  - `loginUser`: Finds user by Auth0 ID after authentication
-  - `getCurrentUser`: Returns current authenticated user
-
-- **`src/controllers/taskController.ts`**
-  - `createTask`: Creates a new task for the authenticated user
-  - `getTasks`: Retrieves all tasks for the authenticated user
-  - `updateTask`: Updates task title/description
-  - `deleteTask`: Deletes a task
-  - `changeTaskStatus`: Changes task status (PENDING → IN_PROGRESS → DONE → ARCHIVED)
-
-- **`src/graphql/schema.ts`**
-  - GraphQL type definitions for `User` and `Task`
-  - Queries: `me`, `tasks`, `task(id)`
-  - Mutations: `registerUser`, `loginUser`, `createTask`, `updateTask`, `deleteTask`, `changeTaskStatus`
+- **`src/middleware/auth.ts`**
+  - JWT token generation and validation utilities
+  - Password hashing and comparison functions
 
 - **`src/graphql/resolvers.ts`**
   - GraphQL resolvers implementing the schema
+  - **Authentication resolvers**: `registerUser`, `loginUser`
+  - **Task resolvers**: `createTask`, `getTasks`, `updateTask`, `deleteTask`, `changeTaskStatus`
+  - **Query resolvers**: `me`, `tasks`, `task(id)`
   - All resolvers check authentication via context
   - Tasks are filtered by `userId` to ensure user isolation
 
+- **`src/graphql/schema.ts`**
+  - GraphQL type definitions for `User`, `Task`, and `AuthPayload`
+  - Queries: `me`, `tasks`, `task(id)`
+  - Mutations: `registerUser`, `loginUser`, `createTask`, `updateTask`, `deleteTask`, `changeTaskStatus`
+
 - **`src/graphql/context.ts`**
-  - Creates GraphQL context from Auth0 JWT payload
-  - Extracts `auth0Id` and finds corresponding MongoDB `userId`
-  - Provides `auth0Id` and `userId` to all resolvers
-
-### GraphQL API
-
-The GraphQL endpoint is available at `/graphql` and requires authentication via Auth0 JWT Bearer token.
-
-**Example queries:**
-
-```graphql
-query GetMe {
-  me {
-    id
-    name
-    email
-    username
-  }
-}
-
-query GetTasks {
-  tasks {
-    id
-    title
-    description
-    status
-    createdAt
-    updatedAt
-  }
-}
-```
-
-**Example mutations:**
-
-```graphql
-mutation RegisterUser($name: String!, $email: String!, $username: String) {
-  registerUser(name: $name, email: $email, username: $username) {
-    id
-    name
-    email
-    username
-  }
-}
-
-mutation CreateTask($title: String!, $description: String) {
-  createTask(title: $title, description: $description) {
-    id
-    title
-    description
-    status
-  }
-}
-```
+  - Creates GraphQL context from JWT payload
+  - Extracts `userId` and provides user information to resolvers
 
 ---
 
@@ -257,17 +197,74 @@ Front/
   - Confirmation screen after logout
   - Redirects to login after short delay
 
-### Authentication flow
+### GraphQL API
 
-1. User clicks "Login" → Redirected to Auth0
-2. User authenticates with Auth0 (email/password or social login)
-3. Auth0 redirects back with authorization code
-4. Front end exchanges code for access token
-5. Token stored in localStorage with expiration time
-6. Front end calls `loginUser` GraphQL mutation
-7. Back end finds user by Auth0 ID or creates new user via `registerUser`
-8. User data fetched via `GET_ME` query and stored in context
-9. Token expiration checked periodically; user logged out if expired
+The GraphQL endpoint is available at `/graphql` and requires authentication via JWT Bearer token.
+
+**Authentication mutations:**
+
+```graphql
+mutation RegisterUser($name: String!, $email: String!, $username: String, $password: String!) {
+  registerUser(name: $name, email: $email, username: $username, password: $password) {
+    token
+    user {
+      id
+      name
+      email
+      username
+    }
+  }
+}
+
+mutation LoginUser($emailOrUsername: String!, $password: String!) {
+  loginUser(emailOrUsername: $emailOrUsername, password: $password) {
+    token
+    user {
+      id
+      name
+      email
+      username
+    }
+  }
+}
+```
+
+**Example queries:**
+
+```graphql
+query GetMe {
+  me {
+    id
+    name
+    email
+    username
+  }
+}
+
+query GetTasks {
+  tasks {
+    id
+    title
+    description
+    status
+    createdAt
+    updatedAt
+  }
+}
+```
+
+**Task mutations:**
+
+```graphql
+mutation CreateTask($title: String!, $description: String) {
+  createTask(title: $title, description: $description) {
+    id
+    title
+    description
+    status
+  }
+}
+```
 
 ---
 
@@ -278,19 +275,13 @@ Front/
 ```env
 PORT=8080
 MONGODB=mongodb+srv://...
-AUTH0_CLIENT_ID=...
-AUTH0_CLIENT_SECRET=...
-AUTH0_DOMAIN=dev-....us.auth0.com
-AUTH0_AUDIENCE=task-manager-crud-api
+JWT_SECRET=your-jwt-secret-key
 ```
 
 ### Front end (`Front/.env`)
 
 ```env
 VITE_GRAPHQL_ENDPOINT=http://localhost:8080/graphql
-VITE_AUTH0_DOMAIN=dev-....us.auth0.com
-VITE_AUTH0_CLIENT_ID=...
-VITE_AUTH0_AUDIENCE=task-manager-crud-api
 ```
 
 ---
@@ -302,7 +293,6 @@ VITE_AUTH0_AUDIENCE=task-manager-crud-api
 - Node.js 20+
 - npm (or another Node package manager)
 - MongoDB database (local or Atlas)
-- Auth0 account and application configured
 
 ### Install dependencies
 
@@ -336,21 +326,32 @@ Then open the URL that Vite prints in the terminal (typically `http://localhost:
 
 ---
 
+## Authentication flow
+
+1. User registers with email, username, and password via `registerUser` mutation
+2. User logs in with email/username and password via `loginUser` mutation
+3. Back end validates credentials and returns JWT token
+4. Token stored in frontend and sent with subsequent GraphQL requests
+5. User data fetched via `me` query and stored in context
+6. Token expiration checked periodically; user logged out if expired
+
+---
+
 ## How to test
 
 1. **Start both servers** (backend and frontend)
 2. **Open the front end** in your browser
-3. **Click Login** → You'll be redirected to Auth0
-4. **Authenticate with Auth0** (create account if needed)
-5. **After authentication**, you'll be redirected back
-6. **If it's your first time**, register your account:
-   - Fill in name, email, and optional username
-   - Click "Register & Login"
-7. **Explore the app**:
+3. **Register a new account**:
+   - Fill in name, email, username, and password
+   - Click "Register"
+4. **Login with your credentials**:
+   - Use email or username with password
+   - Click "Login"
+5. **Explore the app**:
    - View tasks on the Tasks page
    - Create, edit, delete tasks on the Task Manager page
    - Change task statuses (PENDING → IN_PROGRESS → DONE → ARCHIVED)
-8. **All data is stored in MongoDB** and associated with your Auth0 user account
+6. **All data is stored in MongoDB** and associated with your user account
 
 ## Testing Strategy
 
@@ -366,9 +367,28 @@ This project implements a comprehensive testing approach covering unit tests, in
 - Module path resolution for `src/` directory
 
 **Test Structure**: `Back/src/tests/`
-- Unit tests for controllers, models, and utilities
-- Mock implementations for external dependencies (MongoDB, Auth0)
-- HTTP status code testing for API endpoints
+- Unit tests for GraphQL resolvers, models, and utilities
+- Mock implementations for external dependencies (MongoDB, JWT)
+- Authentication resolver testing for `registerUser` and `loginUser`
+- Task resolver testing for CRUD operations
+
+**Example Test Structure**:
+```typescript
+// GraphQL resolver test example
+describe('GraphQL Auth Resolvers', () => {
+  describe('registerUser mutation', () => {
+    it('should register user successfully', async () => {
+      // Test implementation with mocked User model
+    })
+  })
+
+  describe('loginUser mutation', () => {
+    it('should login user successfully', async () => {
+      // Test implementation with mocked User model and password comparison
+    })
+  })
+})
+```
 
 **Running Tests**:
 ```bash
@@ -378,23 +398,13 @@ npm run test:watch          # Run tests in watch mode
 npm run test:coverage       # Generate coverage report
 ```
 
-**Example Test Structure**:
-```typescript
-// Controller test example
-describe('Unit Test: registerUser Controller', () => {
-  let mockReq: Partial<Request> | any
-  let mockRes: Partial<Response> | any
-  let next: any = jest.fn()
-
-  beforeEach(() => {
-    // Setup mocks
-  })
-
-  it('should register user successfully', async () => {
-    // Test implementation
-  })
-})
-```
+**GraphQL Resolver Tests**:
+- **Authentication Tests**: `registerUser` and `loginUser` mutations
+  - User registration with email/username validation
+  - Password hashing and storage
+  - User login with email/username and password validation
+  - Token generation on successful authentication
+  - Error handling for duplicate users and invalid credentials
 
 **Coverage Reports**: Tests generate detailed coverage reports showing:
 - Function coverage
@@ -449,11 +459,11 @@ describe('Header component', () => {
 ### Testing Best Practices
 
 **Backend Testing**:
-- **Mock External Dependencies**: MongoDB, Auth0, external APIs
-- **Test HTTP Responses**: Status codes, headers, response bodies
+- **Mock External Dependencies**: MongoDB, JWT token generation
+- **Test GraphQL Resolvers**: Authentication mutations, task CRUD operations
 - **Error Scenarios**: Test failure cases and edge conditions
 - **Database Operations**: Test model validations and queries
-- **Authentication**: Test JWT token validation and user isolation
+- **Authentication**: Test JWT token generation and user isolation
 
 **Frontend Testing**:
 - **Component Isolation**: Test components in isolation with mocked dependencies
@@ -472,12 +482,12 @@ describe('Header component', () => {
 
 ## Features
 
-- ✅ **Auth0 authentication** with JWT Bearer tokens
+- ✅ **JWT authentication** with secure password hashing
 - ✅ **MongoDB** for persistent data storage
 - ✅ **GraphQL API** with Apollo Server
 - ✅ **Apollo Client** in frontend for GraphQL communication
 - ✅ **TanStack Query** for data caching and optimistic updates
-- ✅ **MVC architecture** in backend with clean separation
+- ✅ **GraphQL-first architecture** with resolvers handling business logic
 - ✅ **DRY principles** with centralized HTTP status codes
 - ✅ **TypeScript** throughout for type safety
 - ✅ **Material UI** for responsive, modern UI
@@ -485,6 +495,7 @@ describe('Header component', () => {
 - ✅ **User isolation**: Each user only sees their own tasks
 - ✅ **Token expiration handling**: Automatic logout when token expires
 - ✅ **Unique constraints**: Email and username must be unique
+- ✅ **Comprehensive testing**: Jest tests for GraphQL resolvers
 
 ---
 
