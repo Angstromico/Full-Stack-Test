@@ -31,7 +31,7 @@ This repository contains a fullâ€‘stack implementation of the **Technical Test â
 - **Express** with **TypeScript**
 - **Apollo Server Express** for GraphQL API
 - **MongoDB** with **Mongoose** ODM
-- **Auth0** JWT Bearer authentication using `express-oauth2-jwt-bearer`
+- **Auth0** JWT Bearer authentication using
 - **GraphQL** for API layer
 
 ### Architecture overview
@@ -204,8 +204,18 @@ The GraphQL endpoint is available at `/graphql` and requires authentication via 
 **Authentication mutations:**
 
 ```graphql
-mutation RegisterUser($name: String!, $email: String!, $username: String, $password: String!) {
-  registerUser(name: $name, email: $email, username: $username, password: $password) {
+mutation RegisterUser(
+  $name: String!
+  $email: String!
+  $username: String
+  $password: String!
+) {
+  registerUser(
+    name: $name
+    email: $email
+    username: $username
+    password: $password
+  ) {
     token
     user {
       id
@@ -362,17 +372,20 @@ This project implements a comprehensive testing approach covering unit tests, in
 **Framework**: Jest with TypeScript support via `ts-jest`
 
 **Configuration**: `Back/jest.config.js`
+
 - TypeScript compilation with isolated modules
 - Node.js test environment
 - Module path resolution for `src/` directory
 
 **Test Structure**: `Back/src/tests/`
+
 - Unit tests for GraphQL resolvers, models, and utilities
 - Mock implementations for external dependencies (MongoDB, JWT)
 - Authentication resolver testing for `registerUser` and `loginUser`
 - Task resolver testing for CRUD operations
 
 **Example Test Structure**:
+
 ```typescript
 // GraphQL resolver test example
 describe('GraphQL Auth Resolvers', () => {
@@ -391,6 +404,7 @@ describe('GraphQL Auth Resolvers', () => {
 ```
 
 **Running Tests**:
+
 ```bash
 cd Back
 npm test                    # Run all tests
@@ -399,6 +413,7 @@ npm run test:coverage       # Generate coverage report
 ```
 
 **GraphQL Resolver Tests**:
+
 - **Authentication Tests**: `registerUser` and `loginUser` mutations
   - User registration with email/username validation
   - Password hashing and storage
@@ -407,8 +422,9 @@ npm run test:coverage       # Generate coverage report
   - Error handling for duplicate users and invalid credentials
 
 **Coverage Reports**: Tests generate detailed coverage reports showing:
+
 - Function coverage
-- Statement coverage  
+- Statement coverage
 - Branch coverage
 - Line coverage
 
@@ -417,16 +433,19 @@ npm run test:coverage       # Generate coverage report
 **Framework**: Cypress for component and E2E testing
 
 **Configuration**: `Front/cypress.config.ts`
+
 - Component testing with React + Vite
 - E2E testing setup
 - Custom event handlers and plugins
 
-**Test Structure**: 
+**Test Structure**:
+
 - `Front/cypress/component/` - Component tests
 - `Front/cypress/e2e/` - End-to-end tests
 - `Front/cypress/fixtures/` - Test data and mocks
 
 **Running Tests**:
+
 ```bash
 cd Front
 npm run test            # Open Cypress test runner
@@ -435,6 +454,7 @@ npm run test:e2e        # Run E2E tests
 ```
 
 **Component Testing Example**:
+
 ```typescript
 // Header component test
 describe('Header component', () => {
@@ -450,6 +470,7 @@ describe('Header component', () => {
 ```
 
 **E2E Testing Features**:
+
 - Full user journey testing
 - Authentication flow testing
 - CRUD operation testing
@@ -459,6 +480,7 @@ describe('Header component', () => {
 ### Testing Best Practices
 
 **Backend Testing**:
+
 - **Mock External Dependencies**: MongoDB, JWT token generation
 - **Test GraphQL Resolvers**: Authentication mutations, task CRUD operations
 - **Error Scenarios**: Test failure cases and edge conditions
@@ -466,6 +488,7 @@ describe('Header component', () => {
 - **Authentication**: Test JWT token generation and user isolation
 
 **Frontend Testing**:
+
 - **Component Isolation**: Test components in isolation with mocked dependencies
 - **User Interactions**: Test clicks, forms, navigation
 - **State Management**: Test context providers and state changes
@@ -473,6 +496,7 @@ describe('Header component', () => {
 - **Responsive Design**: Test different viewport sizes
 
 **Continuous Integration**:
+
 - Automated test runs on pull requests
 - Coverage thresholds enforcement
 - Test result reporting
