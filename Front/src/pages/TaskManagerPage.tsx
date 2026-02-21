@@ -5,7 +5,7 @@ import {
   Grid2 as Grid,
   Typography,
 } from '@mui/material'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useTasks } from '../hooks/useTasks'
 import { TaskForm } from '../components/tasks/TaskForm'
 import { TaskList } from '../components/tasks/TaskList'

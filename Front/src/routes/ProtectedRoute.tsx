@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom'
-import { ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { useAuth } from '../state/AuthContext'
 
 type Props = {
@@ -11,9 +11,8 @@ export function ProtectedRoute({ children }: Props) {
   const location = useLocation()
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+    return <Navigate to='/login' replace state={{ from: location.pathname }} />
   }
 
   return <>{children}</>
 }
-
